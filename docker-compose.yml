@@ -1,16 +1,18 @@
 version: '3.8'
 
 services:
+  # 1. Container auxiliar para verificar/baixar o dump limpo do IIJ Lab
   iyp-updater:
     image: python:3.10-slim
     container_name: iyp-updater
     environment:
-      - IYP_DUMP_URL=https://iyp.iijlab.net/dumps/latest.dump
+      - IYP_DUMP_URL=${IYP_DUMP_URL:-https://iyp.iijlab.net/dumps/latest.dump}
     volumes:
       - ./api/scripts:/scripts
       - ./dumps:/data/dumps
     command: python /scripts/update_dump.py
 
+  # 2. Banco de Dados Neo4j (Inicia apenas após a checagem/carga do dump)
   iyp-neo4j:
     image: neo4j:5.18.0-community
     container_name: iyp-neo4j
@@ -27,22 +29,27 @@ services:
         condition: service_completed_successfully
     restart: always
 
+  # 3. Backend FastAPI (Conecta ao Neo4j via protocolo Bolt)
   iyp-api:
-    build: ./api
+    build:
+      context: ./api
+      dockerfile: Dockerfile
     container_name: iyp-api
-    ports:
-      - "8000:8000"
     environment:
       - NEO4J_URI=bolt://iyp-neo4j:7687
     depends_on:
       - iyp-neo4j
     restart: always
 
+  # 4. Frontend React
   iyp-web:
-    build: ./web
+    build:
+      context: ./web
+      dockerfile: Dockerfile
     container_name: iyp-web
     restart: always
 
+  # 5. Reverse Proxy Nginx (Expõe a aplicação unificada na porta 80)
   iyp-nginx:
     image: nginx:alpine
     container_name: iyp-nginx

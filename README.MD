@@ -46,7 +46,7 @@ A solução é orquestrada via **Docker Compose** e dividida em 4 serviços inte
 1. Clone o repositório para o seu ambiente local:
    ```bash
    git clone https://github.com/iucamendonca/iyp-neo4j-topology.git
-   cd projeto_1
+   cd iyp-neo4j-topology
 
    docker compose up -d --build
 
