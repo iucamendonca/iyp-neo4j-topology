@@ -1,0 +1,16 @@
+# Ambientes virtuais e cache do Python
+.venv/
+__pycache__/
+*.pyc
+
+# Repositório de dados pesados e banco local
+internet-yellow-pages/
+iyp_local.db
+
+# Dependências e build do Frontend (React)
+web/node_modules/
+web/dist/
+
+# Configurações locais da IDE e logs
+.vscode/
+*.log
