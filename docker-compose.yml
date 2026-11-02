@@ -1,65 +1,59 @@
 version: '3.8'
 
 services:
+  iyp-updater:
+    image: python:3.10-slim
+    container_name: iyp-updater
+    environment:
+      - IYP_DUMP_URL=https://iyp.iijlab.net/dumps/latest.dump
+    volumes:
+      - ./api/scripts:/scripts
+      - ./dumps:/data/dumps
+    command: python /scripts/update_dump.py
+
   iyp-neo4j:
-    image: neo4j:5-community
+    image: neo4j:5.18.0-community
     container_name: iyp-neo4j
-    restart: always
-    ports:
-      - "7474:7474"
-      - "7687:7687"
     environment:
       - NEO4J_AUTH=none
+      - NEO4J_PLUGINS=["apoc"]
     volumes:
       - neo4j_data:/data
-    networks:
-      - iyp-network
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - ./api/scripts:/scripts
+      - ./dumps:/data/dumps
+    entrypoint: ["/bin/bash", "/scripts/entrypoint-neo4j.sh"]
+    depends_on:
+      iyp-updater:
+        condition: service_completed_successfully
+    restart: always
 
   iyp-api:
-    build:
-      context: ./api
-      dockerfile: Dockerfile
+    build: ./api
     container_name: iyp-api
-    restart: always
+    ports:
+      - "8000:8000"
     environment:
       - NEO4J_URI=bolt://iyp-neo4j:7687
-    networks:
-      - iyp-network
     depends_on:
-      iyp-neo4j:
-        condition: service_healthy
+      - iyp-neo4j
+    restart: always
 
   iyp-web:
-    build:
-      context: ./web
-      dockerfile: Dockerfile
+    build: ./web
     container_name: iyp-web
     restart: always
-    networks:
-      - iyp-network
 
   iyp-nginx:
     image: nginx:alpine
     container_name: iyp-nginx
-    restart: always
     ports:
       - "80:80"
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
-    networks:
-      - iyp-network
     depends_on:
-      - iyp-api
       - iyp-web
+      - iyp-api
+    restart: always
 
 volumes:
   neo4j_data:
-
-networks:
-  iyp-network:
-    driver: bridge
